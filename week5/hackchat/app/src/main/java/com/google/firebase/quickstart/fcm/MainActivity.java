@@ -103,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadUi() {
+        // TODO: Move the login logic to another activity so we don't need this!
         setContentView(R.layout.activity_main);
 
         Button subscribeButton = (Button) findViewById(R.id.subscribeButton);
@@ -129,14 +130,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // TODO: Insert code to get the user's name, email, profile picture, etc
-        loadProfilePicture((ImageView) findViewById(R.id.mainImage));
+        // TODO: Insert code to get the user's name, email, profile picture, etc and display it
     }
 
     public void pickProfilePicture() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("image/*");
-        startActivityForResult(intent, PICK_IMAGE);
+        // TODO: make an intent to pick a profile picture
     }
 
     public void showProfilePicture(Bitmap picture) {
@@ -147,6 +145,7 @@ public class MainActivity extends AppCompatActivity {
      * Load the user's profile picture into an ImageView
      */
     public void loadProfilePicture(ImageView imageView) {
+        // TODO: Use this to load the user's image once we make an imageView
         StorageReference imageRef = getUserProfPicRef(mUser);
         Glide.with(this).using(new FirebaseImageLoader()).load(imageRef).into(imageView);
     }
