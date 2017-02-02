@@ -60,14 +60,6 @@ public class MainActivityEspressoTest {
 
         // Sleep so the Toast goes away, this is lazy but it works (Toast.LENGTH_SHORT = 2000)
         Thread.sleep(2000);
-
-        // Click log token and check toast
-        onView(allOf(withId(com.hacknight.hackchat.R.id.logTokenButton),
-                withText(com.hacknight.hackchat.R.string.log_token)))
-                .check(matches(isDisplayed()))
-                .perform(click());
-        confirmToastStartsWith(mActivityRule.getActivity().getString(com.hacknight.hackchat.R
-                .string.msg_token_fmt, ""));
     }
 
     private void confirmToastStartsWith(String string) {
