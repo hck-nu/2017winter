@@ -1,0 +1,50 @@
+{
+  "project_info": {
+    "project_number": "565284954186",
+    "firebase_url": "https://hack-night-messaging.firebaseio.com",
+    "project_id": "hack-night-messaging",
+    "storage_bucket": "hack-night-messaging.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:565284954186:android:0c53eacb791d0718",
+        "android_client_info": {
+          "package_name": "com.hacknight.hackchat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "565284954186-pk6rl6qvjfoe653qcheba2p78qtragim.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBmFXzBPdPKy-nj1IGZkpibseNokPaIfY"
+        },
+        {
+          "current_key": "AIzaSyBOIKhj7YrxGg7mCqPPRoPwBLIQYv3eM8k"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "565284954186-pk6rl6qvjfoe653qcheba2p78qtragim.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
