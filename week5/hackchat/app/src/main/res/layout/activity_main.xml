@@ -73,4 +73,15 @@
         android:layout_marginTop="20dp"
         android:text="@string/subscribe_to_news"
         android:textColor="@android:color/holo_purple"/>
+
+    <Button
+        android:id="@+id/sendNews"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Send news"/>
+
+    <ListView
+        android:id="@+id/userList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
 </LinearLayout>

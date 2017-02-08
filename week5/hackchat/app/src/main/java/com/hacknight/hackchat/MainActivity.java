@@ -28,9 +28,17 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+import com.firebase.ui.database.FirebaseListAdapter;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
@@ -40,10 +48,16 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.messaging.FirebaseMessaging;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.FileNotFoundException;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends AppCompatActivity
+        implements View.OnClickListener, Response.Listener<JSONObject> {
 
     private static final String TAG = "MainActivity";
     private static final int PICK_IMAGE = 111;
@@ -52,6 +66,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private User mUser;
     private TextView mNameText;
     private TextView mBioText;
+    private ListView mUserList;
+
+    private RequestQueue mRequestQueue;
+    private FirebaseListAdapter<User> mUserAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,10 +92,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
 
-        // Get references to all of the views we needd
+        mRequestQueue = Volley.newRequestQueue(this);
+
+        // Get references to all of the views we need
         mNameText = (TextView) findViewById(R.id.myFullName);
         mProfilePic = (ImageView) findViewById(R.id.profilePic);
         mBioText = (TextView) findViewById(R.id.myBio);
+        mUserList = (ListView) findViewById(R.id.userList);
 
         // Change the profile pic when the picture is clicked
         mProfilePic.setOnClickListener(this);
@@ -98,7 +119,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });
 
-        // Read the user's data and get notified of any changes
+        subscribeUserInfo();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mUserAdapter.cleanup();
+    }
+
+    /**
+     * Listen to changes to the user's data and update the UI accordingly
+     */
+    private void subscribeUserInfo() {
         FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         User.getDatabaseRef(firebaseUser).addValueEventListener(
                 new ValueEventListener() {
@@ -120,6 +153,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         );
     }
 
+    @NonNull
+    private JsonObjectRequest makeMessageRequest(String to, String title, String body)
+            throws JSONException {
+        JSONObject notification = new JSONObject()
+                .put("title", title)
+                .put("body", body);
+        JSONObject request = new JSONObject()
+                .put("to", to)
+                .put("notification", notification);
+        return (new JsonObjectRequest(Request.Method.POST,
+                "https://fcm.googleapis.com/fcm/send", request,
+                MainActivity.this,
+                null) {
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                HashMap<String, String> params = new HashMap<>();
+                params.put("Authorization", "key=AIzaSyD8XTLGQRFa3Of2L9zClfzDYbSg6fZiEfQ");
+                params.put("Content-Type", "application/json");
+                return params;
+            }
+        });
+    }
+
     /**
      * Show or update the user's information on the UI
      */
@@ -127,6 +183,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mUser.loadProfilePic(this, mProfilePic);
         mNameText.setText(mUser.name);
         mBioText.setText(mUser.bio);
+
+        if (mUser.name == null || mUser.name.isEmpty()) {
+            showNameDialog();
+        }
     }
 
     /**
@@ -191,6 +251,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         alert.show();
     }
 
+    /**
+     * Show a popup box to set the user's display name
+     */
+    public void showNameDialog() {
+        final EditText editText = new EditText(this);
+
+        AlertDialog.Builder alert =
+                new AlertDialog.Builder(this)
+                        .setTitle("What's your name?")
+                        .setMessage(null)
+                        .setView(editText);
+
+        alert.setPositiveButton("Save", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                mUser.updateName(editText.getText().toString());
+            }
+        });
+
+        alert.show();
+    }
+
     public void showToast(CharSequence message) {
         Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
     }
@@ -210,5 +291,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 showEditBioDialog();
                 break;
         }
+    }
+
+    @Override
+    public void onResponse(JSONObject response) {
+        Log.i("News", response.toString());
     }
 }

@@ -42,9 +42,15 @@ public class User {
     String token;
     String bio;
 
+    /**
+     * Needed for Firebase to reconstruct this
+     */
+    public User() {
+    }
+
     public Map<String, String> toMap() {
         Map<String, String> map = new HashMap<>();
-        map.put("picName", picName.toString());
+        map.put("picName", picName == null ? "" : picName.toString());
         map.put("id", id);
         map.put("name", name);
         map.put("token", token);
@@ -52,6 +58,9 @@ public class User {
         return map;
     }
 
+    /**
+     * Required for Firebase to instantiate this object
+     */
     public void setPicName(String picName) {
         this.picName = Uri.parse(picName);
     }
@@ -72,6 +81,14 @@ public class User {
         getDatabaseRef().child("bio").setValue(bio);
     }
 
+    /**
+     * Update the user's name in our database
+     */
+    public void updateName(String name) {
+        this.name = name;
+        getDatabaseRef().child("name").setValue(name);
+    }
+
     public DatabaseReference getDatabaseRef() {
         return FirebaseDatabase.getInstance()
                 .getReference()
@@ -83,7 +100,7 @@ public class User {
      * Load this user's profile picture into an imageView
      */
     public void loadProfilePic(Context context, ImageView imageView) {
-        if (picName.toString().isEmpty()) {
+        if (picName == null || picName.toString().isEmpty()) {
             return;
         }
 
@@ -153,7 +170,7 @@ public class User {
      * Delete the user's profile picture from our database and storage
      */
     private void deleteProfilePic() {
-        if (picName.toString().isEmpty()) {
+        if (picName == null || picName.toString().isEmpty()) {
             return;
         }
 

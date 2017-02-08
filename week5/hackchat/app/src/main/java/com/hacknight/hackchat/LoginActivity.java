@@ -44,17 +44,26 @@ public class LoginActivity extends AppCompatActivity implements OnSuccessListene
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
             // Ask the user to make a new account or login
-            startActivityForResult(
-                    AuthUI.getInstance()
-                            .createSignInIntentBuilder()
-                            .setProviders(Arrays.asList(
-                                    new AuthUI.IdpConfig.Builder(AuthUI.EMAIL_PROVIDER).build(),
-                                    new AuthUI.IdpConfig.Builder(AuthUI.GOOGLE_PROVIDER).build())
-                            ).build(), FIREBASE_LOGIN);
+            startLogin();
         } else {
             // User already logged in
-            startActivity(new Intent(this, MainActivity.class));
+            launchMainActivity();
         }
+    }
+
+    public void startLogin() {
+        startActivityForResult(
+                AuthUI.getInstance()
+                        .createSignInIntentBuilder()
+                        .setProviders(Arrays.asList(
+                                new AuthUI.IdpConfig.Builder(AuthUI.EMAIL_PROVIDER).build(),
+                                new AuthUI.IdpConfig.Builder(AuthUI.GOOGLE_PROVIDER).build())
+                        ).build(), FIREBASE_LOGIN);
+    }
+
+    public void launchMainActivity() {
+        startActivity(new Intent(this, MainActivity.class));
+        finish();
     }
 
     /**
@@ -81,7 +90,26 @@ public class LoginActivity extends AppCompatActivity implements OnSuccessListene
                 } else {
                     showToast("Unknown error");
                 }
+                // Try again!
+                startLogin();
             }
+        }
+    }
+
+    /**
+     * Runs once we retrieve information about the user that just logged in
+     */
+    @Override
+    public void onDataChange(DataSnapshot dataSnapshot) {
+        if (dataSnapshot.getValue() == null) {
+            // We don't have ANY info on this user, which means this is a new account
+            // Save some information about them into our database
+            Log.i(TAG, "New user!");
+            uploadUser(mFirebaseUser);
+        } else {
+            // We already know about this user, continue to MainActivity
+            Log.i(TAG, "Old user");
+            launchMainActivity();
         }
     }
 
@@ -109,24 +137,6 @@ public class LoginActivity extends AppCompatActivity implements OnSuccessListene
     }
 
     /**
-     * Runs once we retrieve information about the user that just logged in
-     */
-    @Override
-    public void onDataChange(DataSnapshot dataSnapshot) {
-        if (dataSnapshot == null) {
-            // We don't have ANY info on this user, which means this is a new account
-            // Save some information about them into our database
-            Log.i(TAG, "New user!");
-            uploadUser(mFirebaseUser);
-        } else {
-            // We already know about this user, continue to MainActivity
-            Log.i(TAG, "Old user");
-            startActivity(new Intent(this, MainActivity.class));
-            finish();
-        }
-    }
-
-    /**
      * Runs if we successfully uploaded a new user's profile picture
      */
     @Override
@@ -138,8 +148,7 @@ public class LoginActivity extends AppCompatActivity implements OnSuccessListene
                     public void onSuccess(Void aVoid) {
                         Log.i(TAG, "User uploaded");
                         // All done, go to MainActivity!
-                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                        finish();
+                        launchMainActivity();
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
