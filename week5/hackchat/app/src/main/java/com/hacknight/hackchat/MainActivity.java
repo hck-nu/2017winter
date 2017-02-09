@@ -25,9 +25,11 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -45,6 +47,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.messaging.FirebaseMessaging;
 
@@ -70,12 +74,15 @@ public class MainActivity extends AppCompatActivity
 
     private RequestQueue mRequestQueue;
     private FirebaseListAdapter<User> mUserAdapter;
+    private DatabaseReference mDbRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // Set the UI of our application
         setContentView(R.layout.activity_main);
+
+        notDoneYo();
 
         // If a notification message is tapped, any data accompanying the notification
         // message is available in the intent extras. In this sample the launcher
@@ -103,6 +110,8 @@ public class MainActivity extends AppCompatActivity
         // Change the profile pic when the picture is clicked
         mProfilePic.setOnClickListener(this);
 
+        mDbRef = FirebaseDatabase.getInstance().getReference();
+
         // Get notified whenever the edit bio button is clicked
         Button editBio = (Button) findViewById(R.id.editBio);
         editBio.setOnClickListener(this);
@@ -119,13 +128,129 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+        mUserAdapter = new FirebaseListAdapter<User>(this, User.class, R.layout.user_list_item,
+                FirebaseDatabase.getInstance().getReference().child("users")) {
+            @Override
+            protected void populateView(View v, User model, int position) {
+                model.loadProfilePic(MainActivity.this, ((ImageView) v.findViewById(R.id.picture)));
+                ((TextView) v.findViewById(R.id.name)).setText(model.name);
+                ((TextView) v.findViewById(R.id.bio)).setText(model.bio);
+            }
+        };
+        mUserList.setAdapter(mUserAdapter);
+        mUserList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                showMessagesDialog(mUserAdapter.getItem(i));
+            }
+        });
+
         subscribeUserInfo();
+    }
+
+    private void notDoneYo() {
+        throw new IllegalStateException("Hey! Did you go to Tools -> Firebase -> click on any of "
+                + "the items and connect the app to your Firebase account? You can't use my "
+                + "google-services.json file, which is in hackchat\\app. You'll want to delete it,"
+                + "maybe restart Android Studio, then");
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         mUserAdapter.cleanup();
+    }
+
+    /**
+     * Show a popup box with a list of messages
+     * This code is a little deficient. It'll crash if you haven't messaged before
+     * To fix, borrow some code from sendMessage!
+     */
+    public void showMessagesDialog(final User other) {
+        View messageView = View.inflate(this, R.layout.message_list, null);
+
+        // Oh god this is so terrible don't do this in real life
+        // Use a ListView instead!
+        final LinearLayout messageList = (LinearLayout) messageView.findViewById(R.id.message_list);
+        mDbRef.child("conversations").child(mUser.id + other.id)
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        messageList.removeAllViews();
+                        Map<String, Object> data = (Map<String, Object>) dataSnapshot.getValue();
+                        int messageCount = ((Long) data.get("message_count")).intValue();
+                        for (int i = 1; i <= messageCount; i++) {
+                            TextView textView = new TextView(MainActivity.this);
+                            textView.setText((String) data.get(String.valueOf(i)));
+                            messageList.addView(textView);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
+
+        final EditText messageText = (EditText) messageView.findViewById(R.id.message_text);
+        messageView.findViewById(R.id.send_message).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sendMessage(mUser, other, messageText.getText().toString());
+                messageText.setText("");
+            }
+        });
+
+        AlertDialog.Builder alert = new AlertDialog.Builder(this)
+                .setTitle("Messages")
+                .setMessage(null)
+                .setView(messageView);
+
+        alert.setNegativeButton("Done", null);
+        alert.show();
+    }
+
+    /**
+     * Just to be clear, you should never structure a real messaging ap this way
+     * First big issues is that having the key for the conversation be user1.id+user2.id
+     * means that when the other user initiates conversationg with you, it's user2.id+user2.id,
+     * which is different!
+     */
+    public void sendMessage(final User user1, final User user2, final String messageText) {
+        mDbRef.child("conversations").child(user1.id + user2.id)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        int messageCount = 0;
+                        Map<String, Object> map = (Map<String, Object>) dataSnapshot.getValue();
+                        if (map == null) {
+                            map = new HashMap<>();
+                            map.put("message_count", 0);
+                            mDbRef.child("conversations").child(user1.id + user2.id)
+                                    .setValue(map);
+                        } else {
+                            messageCount = ((Long) dataSnapshot.child("message_count").getValue())
+                                    .intValue();
+                        }
+
+                        map.put(String.valueOf(messageCount + 1), messageText);
+                        map.put("message_count", messageCount + 1);
+
+                        mDbRef.child("conversations").child(user1.id + user2.id)
+                                .setValue(map);
+
+                        try {
+                            mRequestQueue.add(makeMessageRequest(user2.token, "Yooo", "Yo"));
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
     }
 
     /**
@@ -153,6 +278,9 @@ public class MainActivity extends AppCompatActivity
         );
     }
 
+    /**
+     * Convencience method to make a request for sending a message
+     */
     @NonNull
     private JsonObjectRequest makeMessageRequest(String to, String title, String body)
             throws JSONException {
@@ -169,11 +297,17 @@ public class MainActivity extends AppCompatActivity
             @Override
             public Map<String, String> getHeaders() throws AuthFailureError {
                 HashMap<String, String> params = new HashMap<>();
-                params.put("Authorization", "key=AIzaSyD8XTLGQRFa3Of2L9zClfzDYbSg6fZiEfQ");
+                stillNotDoneYo();
+                params.put("Authorization", "key=");
                 params.put("Content-Type", "application/json");
                 return params;
             }
         });
+    }
+
+    private Map<String, String> stillNotDoneYo() {
+        throw new IllegalStateException("Hey! You can't use my server key! Get your own"
+                + "from console.firebase.google.com/project/[Your project name]/settings/cloudmessaging");
     }
 
     /**
